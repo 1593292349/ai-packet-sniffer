@@ -6,6 +6,24 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { StoreData } from './types';
 
+export function syncAddressHitCounts(data: StoreData, addressId?: number): boolean {
+  const counts = new Map<number, number>();
+  for (const conversation of data.conversations) {
+    if (addressId != null && conversation.address_id !== addressId) continue;
+    counts.set(conversation.address_id, (counts.get(conversation.address_id) || 0) + 1);
+  }
+
+  let changed = false;
+  for (const address of data.addresses) {
+    if (addressId != null && address.id !== addressId) continue;
+    const nextCount = counts.get(address.id) || 0;
+    if (address.hit_count === nextCount) continue;
+    address.hit_count = nextCount;
+    changed = true;
+  }
+  return changed;
+}
+
 export class JsonStore {
   private data: StoreData;
   private filePath: string;
@@ -15,6 +33,7 @@ export class JsonStore {
     this.filePath = filePath;
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     this.data = this.load();
+    if (syncAddressHitCounts(this.data)) this.scheduleFlush();
   }
 
   private emptyData(): StoreData {

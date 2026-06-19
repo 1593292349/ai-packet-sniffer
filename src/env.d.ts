@@ -7,4 +7,5 @@ declare module '*.vue' {
 
 interface Window {
   sniffer: import('../electron/preload').SnifferAPI;
+  rawSniffer: import('../electron/rawPreload').RawSnifferAPI;
 }

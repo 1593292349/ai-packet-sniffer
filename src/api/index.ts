@@ -1,7 +1,5 @@
 /**
  * 渲染端 API 封装层
- * 所有 IPC 调用都通过这里，前端组件不直接调 window.sniffer
- * 便于以后切换实现（比如走 HTTP / WebSocket）
  */
 import type { SnifferAPI } from '../../electron/preload';
 
@@ -22,28 +20,22 @@ export const api = {
   },
   conversations: {
     list: (addressId: number) => window.sniffer.conversations.list(addressId),
-    get: (id: number) => window.sniffer.conversations.get(id),
+    remove: (id: number) => window.sniffer.conversations.remove(id),
+    clear: (addressId: number) => window.sniffer.conversations.clear(addressId),
   },
   messages: {
     list: (convId: number) => window.sniffer.messages.list(convId),
   },
   raw: {
-    get: (id: number) => window.sniffer.raw.get(id),
+    open: (id: number) => window.sniffer.raw.open(id),
   },
   proxy: {
     status: () => window.sniffer.proxy.status(),
     enableSystem: () => window.sniffer.proxy.enableSystem(),
     disableSystem: () => window.sniffer.proxy.disableSystem(),
-    isSystemEnabled: () => window.sniffer.proxy.isSystemEnabled(),
-    envLines: () => window.sniffer.proxy.envLines(),
-  },
-  ca: {
-    exportDer: () => window.sniffer.ca.exportDer(),
-    openFolder: () => window.sniffer.ca.openFolder(),
-  },
-  app: {
-    userDataDir: () => window.sniffer.app.userDataDir(),
-    openExternal: (url: string) => window.sniffer.app.openExternal(url),
+    setEnvPermanent: () => window.sniffer.proxy.setEnvPermanent(),
+    unsetEnvPermanent: () => window.sniffer.proxy.unsetEnvPermanent(),
+    envStatus: () => window.sniffer.proxy.envStatus(),
   },
   on: (channel: 'capture:new' | 'proxy:status' | 'log:entry', handler: (payload: any) => void) =>
     window.sniffer.on(channel, handler),

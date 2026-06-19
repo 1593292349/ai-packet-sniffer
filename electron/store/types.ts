@@ -29,7 +29,7 @@ export interface ConversationRow {
   preview: string | null;
 }
 
-export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
+export type MessageRole = 'user' | 'assistant' | 'system' | 'developer' | 'tool';
 
 export interface MessageRow {
   id: number;

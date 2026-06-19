@@ -6,9 +6,18 @@ export type Protocol =
   | 'unknown';
 
 export interface ParsedMessage {
-  role: 'user' | 'assistant' | 'system' | 'tool';
+  role: 'user' | 'assistant' | 'system' | 'developer' | 'tool';
   content: string;
   meta?: Record<string, any>;
+}
+
+export interface ParsedResponse {
+  text: string;
+  reasoning?: string;
+  messages?: ParsedMessage[];
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
 }
 
 export interface ParsedConversation {

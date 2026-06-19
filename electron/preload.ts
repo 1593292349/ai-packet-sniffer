@@ -3,39 +3,32 @@ import { contextBridge, ipcRenderer } from 'electron';
 const api = {
   addresses: {
     list: () => ipcRenderer.invoke('addresses:list'),
-    add: (pattern: string, label?: string) =>
-      ipcRenderer.invoke('addresses:add', pattern, label),
+    add: (pattern: string, label?: string) => ipcRenderer.invoke('addresses:add', pattern, label),
     remove: (id: number) => ipcRenderer.invoke('addresses:delete', id),
-    toggle: (id: number, enabled: boolean) =>
-      ipcRenderer.invoke('addresses:toggle', id, enabled),
+    toggle: (id: number, enabled: boolean) => ipcRenderer.invoke('addresses:toggle', id, enabled),
   },
   conversations: {
     list: (addressId: number) => ipcRenderer.invoke('conversations:list', addressId),
-    get: (id: number) => ipcRenderer.invoke('conversations:get', id),
+    remove: (id: number): Promise<void> => ipcRenderer.invoke('conversations:delete', id),
+    clear: (addressId: number): Promise<void> =>
+      ipcRenderer.invoke('conversations:clear', addressId),
   },
   messages: {
     list: (convId: number) => ipcRenderer.invoke('messages:list', convId),
   },
   raw: {
-    get: (id: number) => ipcRenderer.invoke('raw:get', id),
+    open: (id: number): Promise<void> => ipcRenderer.invoke('raw:open', id),
   },
   proxy: {
     status: () => ipcRenderer.invoke('proxy:status'),
     enableSystem: () => ipcRenderer.invoke('proxy:enableSystem'),
     disableSystem: () => ipcRenderer.invoke('proxy:disableSystem'),
-    isSystemEnabled: () => ipcRenderer.invoke('proxy:isSystemEnabled'),
-    envLines: () => ipcRenderer.invoke('proxy:envLines'),
+    setEnvPermanent: () => ipcRenderer.invoke('proxy:setEnvPermanent'),
+    unsetEnvPermanent: () => ipcRenderer.invoke('proxy:unsetEnvPermanent'),
+    envStatus: () => ipcRenderer.invoke('proxy:envStatus'),
   },
-  ca: {
-    exportDer: () => ipcRenderer.invoke('ca:exportDer'),
-    openFolder: () => ipcRenderer.invoke('ca:openFolder'),
-  },
-  app: {
-    userDataDir: () => ipcRenderer.invoke('app:userDataDir'),
-    openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
-  },
-  on: (channel: 'capture:new' | 'proxy:status' | 'log:entry', handler: (payload: any) => void) => {
-    const sub = (_e: any, payload: any) => handler(payload);
+  on: (channel: 'capture:new' | 'proxy:status' | 'log:entry', handler: (payload: unknown) => void) => {
+    const sub = (_e: Electron.IpcRendererEvent, payload: unknown) => handler(payload);
     ipcRenderer.on(channel, sub);
     return () => ipcRenderer.removeListener(channel, sub);
   },

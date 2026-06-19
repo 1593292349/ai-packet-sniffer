@@ -5,6 +5,7 @@
 import type { IpcMain, App, Shell, BrowserWindow } from 'electron';
 import type { Store } from '../store';
 import type { MitmProxy } from '../proxy';
+import type { RawWindowManager } from '../rawWindow';
 
 export interface IpcContext {
   ipcMain: IpcMain;
@@ -13,4 +14,5 @@ export interface IpcContext {
   store: Store;
   proxy: MitmProxy;
   getMainWindow: () => BrowserWindow | null;
+  rawWindows: RawWindowManager;
 }

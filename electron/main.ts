@@ -13,6 +13,7 @@ import { MitmProxy, CaptureContext } from './proxy';
 import { Logger } from './logger';
 import { CaptureService } from './capture';
 import { registerAllIpc, IpcContext } from './ipc';
+import { createRawWindowManager, RawWindowManager } from './rawWindow';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -26,11 +27,20 @@ let mainWindow: BrowserWindow | null = null;
 let store: Store;
 let proxy: MitmProxy;
 let logger: Logger;
+let captureService: CaptureService;
+let rawWindows: RawWindowManager;
+
+function openExternalUrl(url: string): void {
+  try {
+    const protocol = new URL(url).protocol;
+    if (protocol === 'http:' || protocol === 'https:') void shell.openExternal(url);
+  } catch {}
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    width: 1300,
+    height: 850,
     minWidth: 960,
     minHeight: 640,
     title: 'AI Packet Sniffer',
@@ -39,17 +49,29 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalUrl(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault();
+    openExternalUrl(url);
+  });
+  mainWindow.webContents.on('will-redirect', (event) => event.preventDefault());
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    rawWindows?.closeAll();
   });
 
   // 实时日志推送到前端
@@ -73,13 +95,19 @@ async function bootstrap() {
   store = new Store(dbPath);
   logger.info('store loaded', { path: dbPath });
 
-  // 3. Proxy（端口冲突自动递增）
+  // 3. CaptureService（创建一次，不在循环里重复 new）
+  captureService = new CaptureService(store, () => mainWindow, logger);
+  const repairedConversations = captureService.repairMissingUserMessages();
+  if (repairedConversations > 0) {
+    logger.info('repaired conversations missing user messages', { count: repairedConversations });
+  }
+
+  // 4. Proxy（端口冲突自动递增）
   const startPort = parseInt(process.env.SNIFFER_PORT || '7890', 10);
   let success = false;
   let lastErr: any = null;
   for (let p = startPort; p < startPort + 20; p++) {
     const candidate = new MitmProxy(userData, p);
-    const captureService = new CaptureService(store, () => mainWindow, logger);
     candidate.setHandler((ctx: CaptureContext) => captureService.handle(ctx));
     try {
       await candidate.start();
@@ -97,7 +125,13 @@ async function bootstrap() {
     throw lastErr;
   }
 
-  // 4. IPC
+  // 5. IPC
+  rawWindows = createRawWindowManager({
+    createWindow: (options) => new BrowserWindow(options),
+    preloadPath: path.join(__dirname, 'rawPreload.js'),
+    rendererPath: path.join(__dirname, '../renderer/index.html'),
+    devServerUrl: isDev ? 'http://localhost:5173' : undefined,
+  });
   const ctx: IpcContext = {
     ipcMain,
     app,
@@ -105,9 +139,18 @@ async function bootstrap() {
     store,
     proxy,
     getMainWindow: () => mainWindow,
+    rawWindows,
   };
   registerAllIpc(ctx);
   logger.info('IPC registered');
+}
+
+async function cleanup() {
+  try {
+    if (proxy) await proxy.stop();
+    if (store) store.close();
+    if (logger) logger.close();
+  } catch {}
 }
 
 app.whenReady().then(async () => {
@@ -126,18 +169,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', async () => {
-  try {
-    if (proxy) await proxy.stop();
-    if (store) store.close();
-    if (logger) logger.close();
-  } catch {}
+  await cleanup();
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('before-quit', async () => {
-  try {
-    if (proxy) await proxy.stop();
-    if (store) store.close();
-    if (logger) logger.close();
-  } catch {}
+  await cleanup();
 });

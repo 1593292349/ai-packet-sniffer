@@ -31,32 +31,34 @@ function fmtTime(ts: number | null) {
   <div class="col-left">
     <div class="header">
       <span>监听地址</span>
-      <span style="font-size: 11px; color: #888">{{ addresses.length }}</span>
+      <a-tag color="blue">{{ addresses.length }}</a-tag>
     </div>
-    <div class="address-list">
-      <div v-if="addresses.length === 0" class="empty">
-        还没有监听地址，点击右上「+ 新增监听地址」开始抓包。
-      </div>
-      <div
+    <a-empty v-if="addresses.length === 0" class="panel-empty" description="还没有监听地址，点击右上角新增" />
+    <div v-else class="address-list">
+      <a-card
         v-for="a in addresses"
         :key="a.id"
+        size="small"
         :class="['address-item', selectedId === a.id ? 'active' : '']"
+        :body-style="{ padding: '10px 12px' }"
         @click="emit('select', a.id)"
       >
         <div class="pattern">{{ a.pattern }}</div>
         <div v-if="a.label" class="label">{{ a.label }}</div>
         <div class="meta">
-          <span>{{ a.enabled ? '启用' : '已停用' }}</span>
-          <span>命中 {{ a.hit_count }}</span>
-          <span v-if="a.last_hit_at">{{ fmtTime(a.last_hit_at) }}</span>
+          <a-tag :color="a.enabled ? 'green' : 'default'">{{ a.enabled ? '启用' : '停用' }}</a-tag>
+          <a-tag>命中 {{ a.hit_count }}</a-tag>
+          <span class="meta-time">{{ fmtTime(a.last_hit_at) }}</span>
         </div>
-        <div class="row-actions">
-          <button @click.stop="emit('toggle', a.id, !a.enabled)">
+        <div class="row-actions" @click.stop>
+          <a-button size="small" type="link" @click="emit('toggle', a.id, !a.enabled)">
             {{ a.enabled ? '停用' : '启用' }}
-          </button>
-          <button @click.stop="emit('delete', a.id)">删除</button>
+          </a-button>
+          <a-popconfirm title="确认删除该监听地址及相关数据？" ok-text="删除" cancel-text="取消" @confirm="emit('delete', a.id)">
+            <a-button size="small" type="link" danger>删除</a-button>
+          </a-popconfirm>
         </div>
-      </div>
+      </a-card>
     </div>
   </div>
 </template>

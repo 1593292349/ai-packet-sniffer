@@ -25,7 +25,7 @@ export interface ConversationRow {
   preview: string | null;
 }
 
-export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
+export type MessageRole = 'user' | 'assistant' | 'system' | 'developer' | 'tool';
 
 export interface MessageRow {
   id: number;
@@ -35,4 +35,20 @@ export interface MessageRow {
   ts: number;
   seq: number;
   meta: string | null;
+}
+
+export interface RawRow {
+  id: number;
+  address_id: number;
+  method: string;
+  url: string;
+  req_headers: string | null;
+  req_body: string | null;
+  resp_status: number | null;
+  resp_headers: string | null;
+  resp_body: string | null;
+  started_at: number;
+  ended_at: number | null;
+  protocol: string | null;
+  client_addr: string | null;
 }

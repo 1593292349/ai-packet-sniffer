@@ -5,10 +5,7 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
-import * as url from 'node:url';
-import { EventEmitter } from 'node:events';
 import { ensureCA, signLeafCert, CAStore } from './ca';
-import { detectProtocol } from './parser';
 
 export interface CaptureContext {
   url: string;
@@ -22,12 +19,11 @@ export interface CaptureContext {
   startedAt: number;
   endedAt: number;
   clientAddr: string | null;
-  protocol: string;
 }
 
 export type CaptureHandler = (ctx: CaptureContext) => void;
 
-export class MitmProxy extends EventEmitter {
+export class MitmProxy {
   private port: number;
   public ca: CAStore;
   private userDataDir: string;
@@ -37,7 +33,6 @@ export class MitmProxy extends EventEmitter {
   private maxBodyBytes = 50 * 1024 * 1024;
 
   constructor(userDataDir: string, port = 7890) {
-    super();
     this.userDataDir = userDataDir;
     this.port = port;
     this.ca = ensureCA(userDataDir);
@@ -92,7 +87,7 @@ export class MitmProxy extends EventEmitter {
       req.url && /^https?:\/\//i.test(req.url) ? req.url : `http://${req.headers.host}${req.url}`;
     const reqBody = await readBody(req, this.maxBodyBytes);
 
-    let parsed: url.URL | null = null;
+    let parsed: URL | null = null;
     try {
       parsed = new URL(fullUrl);
     } catch {
@@ -101,7 +96,6 @@ export class MitmProxy extends EventEmitter {
       return;
     }
 
-    const protocol = detectProtocol(fullUrl, reqBody || null, null);
     const upstreamHeaders = filterHopByHopHeaders(req.headers);
 
     const capture: CaptureContext = {
@@ -116,7 +110,6 @@ export class MitmProxy extends EventEmitter {
       startedAt,
       endedAt: startedAt,
       clientAddr: req.socket.remoteAddress || null,
-      protocol,
     };
 
     try {
@@ -226,7 +219,6 @@ export class MitmProxy extends EventEmitter {
     const startedAt = Date.now();
     const fullUrl = `https://${hostname}:${port}${req.url}`;
     const reqBody = await readBody(req, this.maxBodyBytes);
-    const protocol = detectProtocol(fullUrl, reqBody || null, null);
     const upstreamHeaders = filterHopByHopHeaders(req.headers);
     upstreamHeaders['host'] = `${hostname}:${port}`;
 
@@ -242,7 +234,6 @@ export class MitmProxy extends EventEmitter {
       startedAt,
       endedAt: startedAt,
       clientAddr: req.socket.remoteAddress || null,
-      protocol,
     };
 
     const upReq = https.request(
@@ -292,7 +283,6 @@ export class MitmProxy extends EventEmitter {
         console.error('capture handler error:', e);
       }
     }
-    this.emit('capture', ctx);
   }
 }
 

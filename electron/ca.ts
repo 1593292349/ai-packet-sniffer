@@ -128,13 +128,3 @@ export function signLeafCert(ca: CAStore, hostname: string): { cert: string; key
     key: forge.pki.privateKeyToPem(keys.privateKey),
   };
 }
-
-/**
- * 将 CA 证书同时导出为 DER（.crt）和 PEM，方便用户双击安装。
- */
-export function exportCaAsDer(ca: CAStore, outPath: string): string {
-  const der = forge.asn1.toDer(forge.pki.certificateToAsn1(ca.cert)).getBytes();
-  const buf = Buffer.from(der, 'binary');
-  fs.writeFileSync(outPath, buf);
-  return outPath;
-}
